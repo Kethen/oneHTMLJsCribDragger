@@ -1,0 +1,278 @@
+<html>
+	<head>
+		<title>
+			cribdragging
+		</title>
+		<script>
+			var empty = "...";
+			var original1hex = "15f9864439ea58dcf31b68d93c15205d1e86a9c0693f1b87fe1e8ccd11124a9c95e5cc1c2d30b6ce4af5a444679659c86b1631ea631b7c2b7a5cfd7e3f5a2f783183fa58de185225a6216a68f382afea3d45c04dc56c55344d63e2761a6d94bddafac2e9df533cca6c3678b67c5dc73c9bca44aaa830485319c36ba8b46857f9e9af714f4412db2fd02de07243eb49a632839c42cd17688c931f1a6c63af3573c656dc2f0fcf32a3a142725b0e0a6cbefb0c01e7f7d7ab3792516e4c4719f91ea91fdaa31c9767a38dbf3aef26cb65b65b8ca9c7c82f7557c89eca9791e518a62325750495b9369f3836b1135548d55f2b5efd7ffb63c34d2e276ec50606449122b9fdbf4836c6a6f3e698214ff97a0a753a4e283d5f008cae58b89a9a4f3906aac52c97193b547643c6af90ddc2ee9bb829bfd880e1b94b5058615976535104a77f32d7381c4efcca72dc55cb385cf002414f5a002d826fded9fcb43de08cc0593b63a121974a303b549612b14d1df3989a8a616d0595119a4a0a200587a38fe773265daab1b30cce68c95c01d4eba2";
+			var original2hex = "1dfe864730fc58f0fa1b74906e16315f059eb584212a17c6f85b94c4005b6fb7a9e5cc1c2d31b2c947f8a50a799606c86a0d31f7630a6a7e5247fa3b3f5c6e77639ffa42d0121c25ea3c6b75b283e6f13d45c10ca76b48254b6afe381a3eddb29489cef7df5323c6642136f06c0e967fcbac4bb7a9640d5314cc6febf0484bfbffa8761d0738c527ce28f83c62ae58a97187dd5fc55a3cd1c34c4e6d7aa47c6ac018dc220ecf35a4ee436f1c025f70f7f44c4eeae6daab0a94533b5d4055c409fa15c8ea199035838fb821bd059964b44797b2c2d233310f8791d8db8cee09aa77257641c2b82bdc2777aa465345c0522354fd65f336f956283e3dcb490601a73eaff7a1592488e9f6aaa32c4ead66451a3a542a271607c3b052a289d41b210fa2ce6989036d5e6343daa8d3d18bfcdab136afd795a4bc0c5103337f76144044ef5e77c3381447b4d4319253857046ef02414e5200318a3c8598eefa30b38bdd492c63b326804a01394e9a18b10204f3cbce84337a029b0593135e2b0881a2caea3c2a43e3b1b60c8068840e07dffba2";
+			var display1 = [];
+			var display2 = []; // contains dom elements
+			var original1ascii = [];
+			var original2ascii = [];
+			var memory = []; // guessing original2
+			var crib = []; // for dragging operations
+			var crib_full = []; // offsetted crib
+			var offset = 0;
+			var initializeAscii = function(){
+				original1ascii = [];
+				original2ascii = [];
+				for(var i = 0;i < original1hex.length;i+=2){
+					base = original1hex.charAt(i) + original1hex.charAt(i + 1);
+					original1ascii[i/2] = parseInt(base, 16);
+				}
+				for(var i = 0;i < original2hex.length;i+=2){
+					base = original2hex[i] + original2hex[i + 1];
+					original2ascii[i/2] = parseInt(base, 16);
+				}
+			}
+			var initializeDigits = function(){
+				var display1element = document.getElementById("display1");
+				var display2element = document.getElementById("display2");
+				var length = original1ascii.length;
+				if(original2ascii.length > length){
+					length = original2ascii.length;
+				}
+				display1element.innerHTML = "";
+				display2element.innerHTML = "";
+				display1 = [];
+				display2 = [];
+				for(var i = 0;i < length;i++){
+					var newdigit = document.createElement("div");
+					newdigit.setAttribute("class", "digit");
+					newdigit.innerHTML = empty;
+					display1[i] = newdigit;
+					display1element.appendChild(newdigit);
+					newdigit = document.createElement("div");
+					newdigit.setAttribute("class", "digit");
+					newdigit.innerHTML = empty;
+					display2[i] = newdigit;
+					display2element.appendChild(newdigit);
+				}
+			}
+			var updateDigit = function(location){
+				var guess;
+				if(crib_full[location] != null && crib_full[location] != undefined && crib_full[location] != 0 || memory[location] != null && memory[location] != undefined && memory[location] != 0){
+					var guess;
+					if(crib_full[location] != null && crib_full[location] != undefined && crib_full[location] != 0){
+						guess = crib_full[location];
+					}else{
+						guess = memory[location];
+					}
+					// display current crib
+					if(display2[location] != null)
+					if(guess > 31 && guess < 127){
+						if(display2[location] != null)
+							display2[location].innerHTML = String.fromCharCode(guess);
+					}else{
+						// show invalid
+						if(display2[location] != null)
+							display2[location].innerHTML = "-x-";
+					}
+					// display after xor
+					var xorCode = guess ^ original1ascii[location] ^ original2ascii[location];
+					if(xorCode > 31 && xorCode < 127){
+						if(display1[location] != null)
+							display1[location].innerHTML = String.fromCharCode(xorCode);
+					}else{
+						// show invalid
+						if(display1[location] != null)
+							display1[location].innerHTML = "-x-";
+					}
+				}else{
+					// show that it's empty
+					if(display1[location] != null && display1[location] != undefined){
+						display1[location].innerHTML = empty;
+						display2[location].innerHTML = empty;
+					}
+				}
+			}
+			var cribToFull = function(){
+				crib_full = [];
+				for(var i = 0;i < crib.length;i++){
+					crib_full[i + offset] = crib[i];
+				}
+				
+			}
+			var refreshDisplays = function(){
+				for(var i = 0;i < display1.length;i++){
+					updateDigit(i);
+				}
+			}
+			var refreshCribArea = function(){
+				for(var i = 0;i < crib.length;i++){
+					updateDigit(i + offset);
+				}
+			}
+			var moveCribOnce = function(direction){
+				// 0 = right, other values = left
+				if(direction == 0){
+					offset++;
+				}else{
+					offset--;
+				}
+				if(offset > display1.length - 1){
+					offset = display1.length - 1;
+				}
+				if(offset < 0 - crib.length + 1){
+					offset = 0 - crib.length + 1;
+				}
+				cribToFull();
+				if(direction == 0)
+					updateDigit(offset - 1);
+				else
+					updateDigit(offset + crib.length);
+				refreshCribArea();
+				document.getElementById("offset").value = offset;
+			}
+			var moveCrib = function(magnitude){
+				offset += magnitude;
+				if(offset > display1.length - 2){
+					offset = display1.length - 2;
+				}
+				if(offset < 0 - crib.length + 1){
+					offset = 0 - crib.length + 1;
+				}
+				cribToFull();
+				refreshDisplays();
+				document.getElementById("offset").value = offset;
+			}
+			var jump = function(){
+				moveCrib(parseInt(document.getElementById("offset").value) - offset);
+			}
+			var newcrib = function(){
+				inputcrib = document.getElementById("crib").value;
+				cribhex = document.getElementById("memoryHexInput");
+				cribhex.value = "";
+				if(inputcrib.length < crib.length){
+					var length = crib.length;
+					crib = [];
+					cribToFull();
+					for(var i = 0;i < length;i++){
+						updateDigit(offset + i);
+					}
+
+				}
+				for(var i = 0;i < inputcrib.length;i++){
+					crib[i] = inputcrib.charCodeAt(i);
+					cribhex.value += inputcrib.charCodeAt(i).toString(16);
+				}
+				cribToFull();
+				refreshCribArea();
+			}
+			var cribToMemory = function(){
+				for(var i = 0;i < crib_full.length;i++){
+					if(crib_full[i] != undefined && crib_full[i] != null){
+						memory[i] = crib_full[i];
+					}
+				}
+				var memoryDisplay = document.getElementById("memory");
+				var xorDisplay = document.getElementById("xormemory");
+				var memoryHex = document.getElementById("memoryHex");
+				memoryDisplay.value = "";
+				xorDisplay.value = "";
+				memoryHex.value = "";
+				for(var i = 0;i < memory.length;i++){
+					memoryDisplay.value += String.fromCharCode(memory[i]);
+					xorDisplay.value += String.fromCharCode(memory[i] ^ original1ascii[i] ^ original2ascii[i]);
+					memoryHex.value += memory[i].toString(16);
+				}
+			}
+			var setOriginalHex = function(id){
+				this["original" + id + "hex"] = document.getElementById("original" + id).value;
+				initializeAscii();
+				initializeDigits();
+			}
+			var setCribHex = function(){
+				var hexString = document.getElementById("memoryHexInput").value;
+				var cribinput = document.getElementById("crib");
+				cribinput.value = "";
+				for(var i = 0;i < hexString.length;i += 2){
+					var base = hexString[i] + hexString[i + 1];
+					cribinput.value += String.fromCharCode(parseInt(base, 16));
+				}
+				newcrib();
+			}
+		</script>
+		<style>
+			#main{
+				width:1000px;
+				margin-left:auto;
+				margin-right:auto;
+			}
+			#input{
+				padding-top:20px;
+				position:fixed;
+				top:0px;
+				background:white;
+				width:100%;
+				border-bottom-style:solid;
+				border-bottom-width:1px;
+				padding-bottom:20px;
+			}
+			.display{
+				padding-top:250px;
+				width:480px;
+				margin:none;
+				padding:none;
+				float:left;
+			}
+			#displaySeparator{
+				width:40px;
+				float:left;
+				height:20px;
+			}
+			.digit{
+				width:38px;
+				height:38px;
+				border-style:solid;
+				border-width:1px;
+				display:inline-block;
+				text-align:center;
+				overflow:hidden;
+			}
+			#offset{
+				width:30px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="input">
+			I didn't manage to find the text, but here's the tool I wrote...
+			<br>
+			ciphertext one in ascii hex:<input type="text" onchange="setOriginalHex(1)" id="original1">
+			<br>
+			ciphertext two in ascii hex:<input type="text" onchange="setOriginalHex(2)" id="original2">
+			<br>
+			crib:<input type="text" onkeyup="newcrib()" onchange="newcrib()" id="crib"></input>
+			<br>
+			crib hex:<input type="text" id="memoryHexInput" onchange="setCribHex()" onkeyup="setCribHex()"></input>
+			<br>
+			<button onclick="cribToMemory()">save current crib to memory</button>
+			<br>
+			guess:<input disabled id="memory"></input>
+			<br>
+			xor:<input disabled id="xormemory"></input>
+			<br>
+			guess hex:<input disabled id="memoryHex"></input>
+			<br>
+			<button onclick="moveCribOnce(1)">go left</button>
+			<input type="text" onchange="jump()" id="offset" value="0" width="1"></input>
+			<button onclick="moveCribOnce(0)">go right</button>
+		</div>
+		<div id="main">
+			<div id="display1" class="display">
+			</div>
+			<div id="displaySeparator"></div>
+			<div id="display2" class="display">
+			</div>
+		</div>
+		<script>
+			document.getElementById("original1").value = original1hex;
+			document.getElementById("original2").value = original2hex;
+			setOriginalHex(1);
+			setOriginalHex(2);
+		</script>
+	</body>
+</html>
